@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Closet Archive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE: quiet, archival, a little dry — like a museum's specimen register of one person's wardrobe
+   IDEA: a garment catalogue (図鑑): numbered specimens on grey plinths, outfits as flat-lays, spending as a ledger
+   PICTURE: the specimen grid itself, cut-out garments floating on soft stone plates
+   COLOUR and TYPE: cool paper + near-black ink, olive support, one cobalt accent; Archivo Narrow numbers, Zen Kaku Gothic text
+   LAYOUT: slim header with tabs, then the working view full width; stacks to one column under 600px */
+:root{color-scheme:light dark;
+--bg:light-dark(#eeeeeb,#111211);--paper:light-dark(#fafaf8,#1a1b1a);--ink:light-dark(#151515,#ececea);
+--mute:light-dark(#6a6c67,#9b9d98);--line:light-dark(#d8d8d3,#2d2f2c);--olive:light-dark(#4d5536,#a4ae82);
+--acc:light-dark(#2340e8,#8796ff);--plate:light-dark(#e3e3df,#242624);--plate2:light-dark(#f4f4f1,#2c2e2c);--warn:light-dark(#b3261e,#ff8a80)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 "Zen Kaku Gothic New",system-ui,sans-serif;overflow-x:clip}
+.num,h1,.kpi b{font-family:"Archivo Narrow","Zen Kaku Gothic New",sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+header{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding:14px max(4vw,16px) 0}
+.hrow{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+h1{margin:0;font-size:32px;line-height:1.05;font-weight:700;letter-spacing:-.01em}
+.sub{color:var(--mute);font-size:14px}
+nav{display:flex;gap:4px;margin-top:10px;overflow-x:auto}
+nav button{flex:none;border:0;background:none;padding:10px 14px;min-height:44px;border-bottom:2px solid transparent;color:var(--mute);font-weight:500}
+nav button[aria-current=true]{color:var(--ink);border-color:var(--ink)}
+main{padding:22px max(4vw,16px) 60px;max-width:1320px;margin:0 auto}
+.view[hidden]{display:none}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.chip{border:1px solid var(--line);background:var(--paper);border-radius:99px;padding:6px 13px;min-height:38px;font-size:14px}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+input[type=text],input[type=search],input[type=number],input[type=date],select,textarea{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:9px 11px;min-height:44px;font-size:16px;width:100%}
+textarea{min-height:90px;resize:vertical}
+.btn{border:1px solid var(--ink);background:var(--ink);color:var(--bg);border-radius:8px;padding:10px 16px;min-height:44px;font-weight:700}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn.acc{background:var(--acc);border-color:var(--acc);color:#fff}
+.btn.danger{background:transparent;color:var(--warn);border-color:var(--warn)}
+.btn:disabled{opacity:.45;cursor:default}
+.grow{flex:1 1 200px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:14px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:0;text-align:left;overflow:hidden;display:flex;flex-direction:column}
+.card:hover .plate img{transform:translateY(-3px)}
+.plate{aspect-ratio:4/5;background:radial-gradient(ellipse at 50% 42%,var(--plate2),var(--plate) 72%);display:grid;place-items:center;padding:14px;position:relative}
+.plate img{max-width:100%;max-height:100%;object-fit:contain;filter:drop-shadow(0 10px 12px rgba(0,0,0,.22));transition:transform .25s}
+.plate .no{position:absolute;left:10px;top:8px;font-size:13px;color:var(--mute)}
+.plate .sold{position:absolute;right:10px;top:8px;font-size:12px;background:var(--ink);color:var(--bg);padding:1px 7px;border-radius:4px}
+.meta{padding:9px 11px 11px}
+.meta b{display:block;font-size:14px;line-height:1.35}
+.meta span{font-size:13px;color:var(--mute)}
+.empty{border:1px dashed var(--line);border-radius:12px;padding:44px 20px;text-align:center;color:var(--mute)}
+.empty b{display:block;color:var(--ink);font-size:20px;margin-bottom:6px}
+.note{font-size:13px;color:var(--mute)}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;align-items:start}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:18px}
+.panel h2{margin:0 0 12px;font-size:20px}
+.lay{display:grid;grid-template-columns:1fr 1fr 64px;grid-template-areas:"t t s" "b b s" "f f s";gap:6px;background:radial-gradient(ellipse at 50% 40%,var(--plate2),var(--plate) 75%);border-radius:10px;padding:12px;min-height:220px}
+.lay>div{display:flex;flex-wrap:wrap;gap:4px;align-items:center;justify-content:center}
+.lay .t{grid-area:t}.lay .b{grid-area:b}.lay .f{grid-area:f}.lay .s{grid-area:s;flex-direction:column}
+.lay img{max-height:130px;max-width:48%;object-fit:contain;filter:drop-shadow(0 6px 8px rgba(0,0,0,.2))}
+.lay .b img{max-height:170px}.lay .f img{max-height:56px}.lay .s img{max-width:100%;max-height:60px}
+.lay.sm{min-height:0;padding:8px}.lay.sm img{max-height:70px}.lay.sm .b img{max-height:90px}.lay.sm .f img{max-height:32px}.lay.sm .s img{max-height:34px}
+.lay .hint{grid-column:1/-1;grid-row:1/-1;color:var(--mute);font-size:14px;text-align:center}
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:6px;max-height:300px;overflow:auto;padding:2px}
+.th{aspect-ratio:1;border:1px solid var(--line);border-radius:8px;background:var(--plate);padding:5px;display:grid;place-items:center;position:relative}
+.th img{max-width:100%;max-height:100%;object-fit:contain}
+.th[aria-pressed=true]{border:2px solid var(--acc);background:var(--plate2)}
+.th[aria-pressed=true]::after{content:"✓";position:absolute;right:3px;top:0;color:var(--acc);font-weight:700;font-size:13px}
+.diary{display:flex;flex-direction:column;gap:14px}
+.entry{display:grid;grid-template-columns:96px minmax(0,1fr);gap:14px;border-top:1px solid var(--line);padding-top:14px}
+.entry .d{font-size:28px;line-height:1;font-weight:700}
+.entry .d small{display:block;font-size:13px;color:var(--mute);font-weight:500;margin-top:4px}
+.entry p{margin:8px 0 4px;white-space:pre-wrap;font-size:15px}
+.tag{display:inline-block;font-size:12px;border:1px solid var(--line);border-radius:4px;padding:0 6px;margin:2px 4px 0 0;color:var(--mute)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+label.f{display:block;font-size:13px;color:var(--mute);margin:10px 0 4px}
+.fgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 12px}
+.modal{position:fixed;inset:0;background:rgba(10,10,10,.55);z-index:20;display:grid;place-items:center;padding:16px}
+.modal[hidden]{display:none}
+.sheet{background:var(--bg);border-radius:14px;width:min(860px,100%);max-height:calc(100vh - 32px);overflow:auto;padding:22px;position:relative}
+.x{position:absolute;right:10px;top:10px;border:0;background:none;font-size:24px;width:44px;height:44px}
+.cut{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}
+.chk{background-color:#fff;background-image:linear-gradient(45deg,#ddd 25%,transparent 25%,transparent 75%,#ddd 75%),linear-gradient(45deg,#ddd 25%,transparent 25%,transparent 75%,#ddd 75%);background-size:16px 16px;background-position:0 0,8px 8px;border-radius:10px;aspect-ratio:4/5;display:grid;place-items:center;padding:10px;overflow:hidden}
+.chk canvas,.chk img{max-width:100%;max-height:100%}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:40px 16px;text-align:center;display:block;cursor:pointer}
+.drop:hover{border-color:var(--acc)}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:22px}
+.kpi{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.kpi span{font-size:13px;color:var(--mute)}
+.kpi b{display:block;font-size:clamp(26px,3.4vw,40px);line-height:1.1;white-space:nowrap}
+.bars .r{display:grid;grid-template-columns:7.5em minmax(0,1fr) 6.5em;gap:10px;align-items:center;font-size:14px;padding:4px 0}
+.bars .tr{background:var(--plate);border-radius:4px;height:18px;overflow:hidden}
+.bars .fl{height:100%;background:var(--olive);border-radius:4px}
+.bars .r.hi .fl{background:var(--acc)}
+.bars .v{text-align:right;white-space:nowrap;font-family:"Archivo Narrow",sans-serif;font-size:15px}
+.months{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:6px;align-items:end;height:200px;padding-top:20px}
+.months .m{display:flex;flex-direction:column;justify-content:flex-end;height:100%;text-align:center;font-size:12px;color:var(--mute)}
+.months .m i{display:block;background:var(--olive);border-radius:4px 4px 0 0;min-height:2px}
+.months .m em{font-style:normal;font-size:11px;color:var(--ink);white-space:nowrap}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left}
+td.n,th.n{text-align:right;white-space:nowrap}
+.ai-out{display:flex;flex-direction:column;gap:16px;margin-top:18px}
+.prop{display:grid;grid-template-columns:minmax(0,260px) minmax(0,1fr);gap:18px;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px}
+.prop h3{margin:0 0 6px;font-size:19px}
+.prop p{margin:6px 0}
+.read{font-size:18px;line-height:1.7;border-left:3px solid var(--olive);padding:4px 0 4px 14px}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:99px;z-index:30;font-size:14px}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.spin{animation:none}.plate img{transition:none}}
+@media(max-width:860px){.two,.prop{grid-template-columns:minmax(0,1fr)}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){h1{font-size:26px}.cut,.fgrid{grid-template-columns:minmax(0,1fr)}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.bars .r{grid-template-columns:5.5em minmax(0,1fr) 5.5em}.months em{display:none}.entry{grid-template-columns:minmax(0,1fr)}}
+</style>
+</head>
+<body>
+<header>
+  <div class="hrow"><h1>Closet Archive</h1><span class="sub" id="count">読み込み中…</span></div>
+  <nav aria-label="表示切替">
+    <button data-v="zukan">図鑑</button><button data-v="outfits">コーデ日記</button><button data-v="ai">AIスタイル提案</button><button data-v="money">支出</button>
+  </nav>
+</header>
+<main>
+  <section class="view" id="v-zukan">
+    <div class="bar">
+      <input type="search" id="q" class="grow" placeholder="名前・ブランド・タグで検索" aria-label="検索">
+      <select id="fColor" aria-label="色" style="width:auto"></select>
+      <select id="fSort" aria-label="並び順" style="width:auto"><option value="no">番号順</option><option value="new">新しい順</option><option value="price">価格が高い順</option><option value="wear">よく着る順</option></select>
+      <button class="btn acc" id="addBtn">＋ 服を登録</button>
+    </div>
+    <div class="bar" id="catChips"></div>
+    <div id="grid"></div>
+  </section>
+
+  <section class="view" id="v-outfits" hidden>
+    <div class="two">
+      <div class="panel">
+        <h2 id="bTitle">コーデを組む</h2>
+        <div id="lay"></div>
+        <div class="bar" id="pCats" style="margin:14px 0 8px"></div>
+        <div class="thumbs" id="picker"></div>
+        <div class="fgrid">
+          <div><label class="f" for="oDate">日付</label><input type="date" id="oDate"></div>
+          <div><label class="f" for="oMood">雰囲気・テーマ</label><input type="text" id="oMood" placeholder="例：Yohjiっぽく重め"></div>
+        </div>
+        <label class="f" for="oNote">メモ（日記）</label>
+        <textarea id="oNote" placeholder="どこに行った、どう感じた、次はこうしたい…"></textarea>
+        <label class="f" for="oPhoto">実際に着た写真（任意）</label>
+        <input type="file" id="oPhoto" accept="image/*">
+        <div class="row" style="margin-top:14px"><button class="btn" id="oSave">日記に保存</button><button class="btn ghost" id="oClear">クリア</button></div>
+      </div>
+      <div>
+        <h2 style="margin:4px 0 12px;font-size:20px">日記</h2>
+        <div class="diary" id="diary"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="v-ai" hidden>
+    <div class="two">
+      <div class="panel">
+        <h2>今日の気分・予定</h2>
+        <div class="bar" id="moods"></div>
+        <label class="f" for="aiSit">シーン・天気・気分（自由に）</label>
+        <input type="text" id="aiSit" placeholder="例：寒い日、大学→古着屋。黒に飽きたので少しだけ色を入れたい">
+        <div class="row" style="margin-top:14px"><button class="btn acc" id="aiGo">コーデと新しい系統を提案してもらう</button><button class="btn ghost" id="aiStop" hidden>中止</button></div>
+        <p class="note" id="aiNote"></p>
+      </div>
+      <div class="panel">
+        <h2>スタイルメモ</h2>
+        <p class="note" style="margin-top:-6px">AIが提案するときの前提になる、自分のスタイリングのルール。自由に書き換えてOK。</p>
+        <textarea id="memo" style="min-height:170px"></textarea>
+        <p class="note" id="memoNote"></p>
+      </div>
+    </div>
+    <div class="ai-out" id="aiOut"></div>
+  </section>
+
+  <section class="view" id="v-money" hidden>
+    <div class="bar"><select id="mYear" aria-label="年" style="width:auto"></select><span class="note">購入日と価格が入っている服から集計します</span></div>
+    <div class="kpis" id="kpis"></div>
+    <div class="two">
+      <div class="panel"><h2>月別の支出</h2><div class="months" id="months"></div></div>
+      <div class="panel"><h2>カテゴリ別</h2><div class="bars" id="byCat"></div></div>
+      <div class="panel"><h2>ブランド別</h2><div class="bars" id="byBrand"></div></div>
+      <div class="panel"><h2>着用単価</h2><p class="note" style="margin-top:-6px">価格 ÷ 日記に記録した着用回数。低いほど元が取れています。</p><div style="overflow-x:auto"><table id="cpw"></table></div></div>
+    </div>
+  </section>
+</main>
+
+<div class="modal" id="modal" hidden><div class="sheet" role="dialog" aria-modal="true"><button class="x" id="mx" aria-label="閉じる">×</button><div id="mbody"></div></div></div>
+
+<script>
+{
+const CATS=['アウター','トップス','ボトムス','シューズ','バッグ','小物'];
+const COLORS={'黒':'#161616','チャコール':'#3d3f40','グレー':'#9a9b9a','ネイビー':'#1f2a44','ブルー':'#4a6fa5','デニム':'#5a7390','オリーブ／カーキ':'#5f6440','ブラウン':'#6b4a33','ベージュ':'#cbbd9f','白':'#f2f2f0','その他':'#b05d8a'};
+const MOODS=['Yohjiのドレープ','Kikoの「普通だけど変」','90s–00sアーカイブ','UKストリート×ミリタリー','インダストリアル／テック','Hedi期のタイト'];
+const MEMO_DEFAULT='・上は短め／下は太く長く、重心を下に置く\n・裾・袖口・腰に「はみ出し」を作る（中のシャツ、長袖T、エプロン）\n・差し色は首元か腰に一点だけ\n・黒／チャコール／ネイビー／オリーブ中心、デニムは色落ち\n・「おしゃれしてる感」より、着慣れた普通っぽさ＋少しの違和感\n・素材はタフで長く使えるもの';
+const S={items:[],outfits:[],memo:null,db:null,assets:null,sample:null,canImg:false,loading:true,local:{},cat:'all',pcat:'all',sel:new Set(),editO:null,oPhoto:null,moods:new Set(),ai:null,view:'zukan'};
+const $=s=>document.querySelector(s);
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const yen=n=>'¥'+Math.round(Number(n)||0).toLocaleString('ja-JP');
+const rid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const today=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)};
+const src=id=>id?(S.local[id]||'/_blob/'+encodeURIComponent(id)):'';
+const pad=n=>String(n).padStart(3,'0');
+const toast=t=>{const e=document.createElement('div');e.className='toast';e.textContent=t;document.body.append(e);setTimeout(()=>e.remove(),2600)};
+const wears=()=>{const w={};for(const o of S.outfits)for(const i of (o.items||[]))w[i]=(w[i]||0)+1;return w};
+const byId=id=>S.items.find(i=>i.id===id);
+
+/* ---------- storage ---------- */
+async function putBlob(b){if(S.assets){const r=await S.assets.upload(b);return r.id}const id='local-'+rid();S.local[id]=URL.createObjectURL(b);return id}
+async function saveDoc(col,id,obj){
+  if(S.db){await S.db.collection(col).doc(id).set(obj);return}
+  const arr=col==='items'?S.items:S.outfits;const i=arr.findIndex(x=>x.id===id);const v={id,...obj};i<0?arr.push(v):arr[i]=v;render();
+}
+async function delDoc(col,id){
+  if(S.db){await S.db.collection(col).doc(id).delete();return}
+  const k=col==='items'?'items':'outfits';S[k]=S[k].filter(x=>x.id!==id);render();
+}
+
+/* ---------- cutout: flood-fill the background from the photo's edges ---------- */
+function toCanvas(bmp,max){const r=Math.min(1,max/Math.max(bmp.width,bmp.height));const c=document.createElement('canvas');c.width=Math.round(bmp.width*r);c.height=Math.round(bmp.height*r);c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);return c}
+function cutout(srcC,tol){
+  const w=srcC.width,h=srcC.height,N=w*h,d=srcC.getContext('2d',{willReadFrequently:true}).getImageData(0,0,w,h).data;
+  const sm=[];const add=i=>sm.push([d[i*4],d[i*4+1],d[i*4+2]]);
+  for(let x=0;x<w;x+=3){add(x);add((h-1)*w+x)}for(let y=0;y<h;y+=3){add(y*w);add(y*w+w-1)}
+  const K=5;let cen=[];for(let k=0;k<K;k++)cen.push(sm[Math.floor(k*sm.length/K)].slice());let cnt=[];
+  for(let it=0;it<7;it++){const acc=cen.map(()=>[0,0,0,0]);for(const p of sm){let b=0,bd=1e12;for(let k=0;k<cen.length;k++){const c=cen[k],q=(p[0]-c[0])**2+(p[1]-c[1])**2+(p[2]-c[2])**2;if(q<bd){bd=q;b=k}}const a=acc[b];a[0]+=p[0];a[1]+=p[1];a[2]+=p[2];a[3]++}cnt=acc.map(a=>a[3]);cen=acc.map((a,k)=>a[3]?[a[0]/a[3],a[1]/a[3],a[2]/a[3]]:cen[k])}
+  cen=cen.filter((c,k)=>cnt[k]>=sm.length*.05);
+  const near=i=>{const r=d[i*4],g=d[i*4+1],b=d[i*4+2];let bd=1e12;for(const c of cen){const q=(r-c[0])**2+(g-c[1])**2+(b-c[2])**2;if(q<bd)bd=q}return Math.sqrt(bd)};
+  const stepD=(i,j)=>Math.sqrt((d[i*4]-d[j*4])**2+(d[i*4+1]-d[j*4+1])**2+(d[i*4+2]-d[j*4+2])**2);
+  const bg=new Uint8Array(N),q=new Int32Array(N);let qh=0,qt=0;const T=tol,T2=tol*1.8,TS=tol*.3;
+  const nb=(p,f)=>{const x=p%w;if(x>0)f(p-1);if(x<w-1)f(p+1);if(p>=w)f(p-w);if(p<N-w)f(p+w)};
+  const seed=i=>{if(!bg[i]&&near(i)<T2){bg[i]=1;q[qt++]=i}};
+  for(let x=0;x<w;x++){seed(x);seed((h-1)*w+x)}for(let y=0;y<h;y++){seed(y*w);seed(y*w+w-1)}
+  while(qh<qt){const p=q[qh++];nb(p,n=>{if(bg[n])return;const dn=near(n);if(dn<T||(dn<T2&&stepD(p,n)<TS)){bg[n]=1;q[qt++]=n}})}
+  const lab=new Int32Array(N),sizes=[0];let L=0,mx=0;
+  for(let i=0;i<N;i++){if(bg[i]||lab[i])continue;L++;let s=0;qh=qt=0;q[qt++]=i;lab[i]=L;while(qh<qt){const p=q[qh++];s++;nb(p,n=>{if(!bg[n]&&!lab[n]){lab[n]=L;q[qt++]=n}})}sizes.push(s);if(s>mx)mx=s}
+  if(!mx)return null;
+  const a=new Uint8Array(N);let x0=w,y0=h,x1=0,y1=0,fg=0;
+  for(let i=0;i<N;i++){const l=lab[i];if(l&&sizes[l]>=mx*.08&&sizes[l]>40){a[i]=255;fg++;const x=i%w,y=(i-x)/w;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}}
+  const P=10,bw=x1-x0+1+P*2,bh=y1-y0+1+P*2,out=document.createElement('canvas');out.width=bw;out.height=bh;
+  const oc=out.getContext('2d'),od=oc.createImageData(bw,bh);
+  for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const i=y*w+x;if(!a[i])continue;let s=0,c=0;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const xx=x+dx,yy=y+dy;if(xx>=0&&yy>=0&&xx<w&&yy<h){s+=a[yy*w+xx];c++}}const o=((y-y0+P)*bw+(x-x0+P))*4;od.data[o]=d[i*4];od.data[o+1]=d[i*4+1];od.data[o+2]=d[i*4+2];od.data[o+3]=Math.round(s/c)}
+  oc.putImageData(od,0,0);return{canvas:out,frac:fg/N};
+}
+const toBlob=(c,t,qq)=>new Promise(r=>c.toBlob(r,t,qq));
+async function blobOf(c){let b=await toBlob(c,'image/webp',.9);if(!b||b.type!=='image/webp')b=await toBlob(c,'image/png');return b}
+
+/* ---------- AI ---------- */
+async function askJSON(prompt,opts){
+  const s=S.sample;
+  if(typeof s.json==='function'){try{return await s.json(prompt,opts)}catch(e){if(e&&['not_granted','rate_limited'].includes(e.code))throw e;if(opts&&opts.signal&&opts.signal.aborted)throw e}}
+  const r=await s(prompt,opts);const m=String(r.text||'').match(/\{[\s\S]*\}/);if(!m)throw{message:'AIの返答を読み取れませんでした'};return JSON.parse(m[0]);
+}
+const aiErr=e=>e&&e.code==='not_granted'?'AIの利用が許可されていません。':e&&e.code==='rate_limited'?'混み合っています。少し待ってからもう一度。':'うまくいきませんでした：'+((e&&e.message)||'不明なエラー');
+
+/* ---------- modal ---------- */
+function openM(html){$('#mbody').innerHTML=html;$('#modal').hidden=false;$('#mx').focus()}
+function closeM(){$('#modal').hidden=true;$('#mbody').innerHTML='';S.add=null}
+$('#mx').onclick=closeM;$('#modal').addEventListener('click',e=>{if(e.target.id==='modal')closeM()});
+addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#modal').hidden)closeM()});
+
+/* ---------- item form ---------- */
+function formHTML(it={}){
+  const opt=(arr,v)=>arr.map(x=>`<option ${x===v?'selected':''}>${esc(x)}</option>`).join('');
+  return `<div class="fgrid">
+  <div style="grid-column:1/-1"><label class="f" for="iName">名前</label><input type="text" id="iName" value="${esc(it.name)}" placeholder="例：ローゲージ クルーネックニット"></div>
+  <div><label class="f" for="iCat">カテゴリ</label><select id="iCat">${opt(CATS,it.category||'トップス')}</select></div>
+  <div><label class="f" for="iColor">色</label><select id="iColor">${opt(Object.keys(COLORS),it.color||'黒')}</select></div>
+  <div><label class="f" for="iBrand">ブランド</label><input type="text" id="iBrand" value="${esc(it.brand)}"></div>
+  <div><label class="f" for="iEra">シーズン・年代</label><input type="text" id="iEra" value="${esc(it.era)}" placeholder="例：24AW / 00s"></div>
+  <div><label class="f" for="iMat">素材</label><input type="text" id="iMat" value="${esc(it.material)}"></div>
+  <div><label class="f" for="iSil">シルエット</label><input type="text" id="iSil" value="${esc(it.silhouette)}" placeholder="例：短丈・身幅広め"></div>
+  <div><label class="f" for="iPrice">購入価格（円）</label><input type="number" id="iPrice" inputmode="numeric" min="0" value="${esc(it.price??'')}"></div>
+  <div><label class="f" for="iDate">購入日</label><input type="date" id="iDate" value="${esc(it.buyDate||today())}"></div>
+  <div><label class="f" for="iShop">購入場所</label><input type="text" id="iShop" value="${esc(it.shop)}" placeholder="例：2nd STREET / 公式"></div>
+  <div><label class="f" for="iStatus">状態</label><select id="iStatus"><option value="own" ${it.status!=='sold'?'selected':''}>所持</option><option value="sold" ${it.status==='sold'?'selected':''}>手放した</option></select></div>
+  <div style="grid-column:1/-1"><label class="f" for="iTags">雰囲気タグ（カンマ区切り）</label><input type="text" id="iTags" value="${esc((it.tags||[]).join(', '))}"></div>
+  <div style="grid-column:1/-1"><label class="f" for="iNotes">メモ</label><textarea id="iNotes">${esc(it.notes)}</textarea></div></div>`;
+}
+function readForm(){const v=id=>$(id).value.trim();const p=v('#iPrice');return{name:v('#iName')||'名称未設定',category:v('#iCat'),color:v('#iColor'),brand:v('#iBrand'),era:v('#iEra'),material:v('#iMat'),silhouette:v('#iSil'),price:p===''?null:Math.max(0,Number(p)||0),buyDate:v('#iDate'),shop:v('#iShop'),status:v('#iStatus'),tags:v('#iTags').split(/[,、]/).map(s=>s.trim()).filter(Boolean).slice(0,8),notes:v('#iNotes')}}
+function fillForm(r){
+  const set=(id,val)=>{if(val!=null&&val!=='')$(id).value=String(val)};
+  set('#iName',r.name);if(CATS.includes(r.category))$('#iCat').value=r.category;if(COLORS[r.color])$('#iColor').value=r.color;
+  set('#iMat',r.material);set('#iSil',r.silhouette);set('#iBrand',r.brand);if(Array.isArray(r.tags))$('#iTags').value=r.tags.map(String).slice(0,5).join(', ');
+}
+
+function openAdd(edit){
+  S.add={edit:edit||null,src:null,cut:null,tol:40,useCut:true};
+  const it=edit||{};
+  openM(`<h2 style="margin:0 0 14px">${edit?'No.'+esc(pad(it.no))+' を編集':'服を登録'}</h2>
+  <div class="cut">
+    <div>
+      <label class="drop" id="drop" ${edit?'hidden':''}><input type="file" id="iFile" accept="image/*" hidden><b>写真を選ぶ</b><br><span class="note">白い壁や床の上で平置き・吊るしで撮ると、きれいに切り抜けます</span></label>
+      <div id="pvWrap" ${edit?'':'hidden'}>
+        <div class="chk" id="pv">${edit&&it.img?`<img src="${esc(src(it.img))}" alt="">`:''}</div>
+        <div id="cutCtl" hidden>
+          <label class="f" for="tol">背景の消し具合 <span id="tolV">40</span></label><input type="range" id="tol" min="8" max="110" value="40" style="width:100%">
+          <div class="row"><label class="row" style="gap:6px;font-size:14px"><input type="checkbox" id="noCut"> 切り抜かずに使う</label></div>
+          <p class="note" id="cutNote"></p>
+        </div>
+        ${edit?'<label class="btn ghost" style="display:inline-block;margin-top:10px">写真を差し替え<input type="file" id="iFile" accept="image/*" hidden></label>':''}
+        <div class="row" style="margin-top:10px"><button class="btn ghost" id="aiTag" ${S.sample?'':'hidden'}>AIで自動入力</button><span class="note" id="tagNote"></span></div>
+      </div>
+    </div>
+    <div>${formHTML(it)}</div>
+  </div>
+  <div class="row" style="margin-top:18px;justify-content:flex-end"><button class="btn ghost" id="cancel">キャンセル</button><button class="btn" id="iSave">${edit?'保存':'図鑑に登録'}</button></div>`);
+  $('#cancel').onclick=closeM;
+  $('#iFile').onchange=e=>{const f=e.target.files[0];if(f)loadPhoto(f)};
+  $('#tol').oninput=e=>{S.add.tol=+e.target.value;$('#tolV').textContent=e.target.value;clearTimeout(S.add.tm);S.add.tm=setTimeout(recut,120)};
+  $('#noCut').onchange=e=>{S.add.useCut=!e.target.checked;showPv()};
+  $('#aiTag').onclick=aiTag;
+  $('#iSave').onclick=saveItem;
+}
+async function loadPhoto(f){
+  try{const bmp=await createImageBitmap(f);S.add.src=toCanvas(bmp,720);$('#drop').hidden=true;$('#pvWrap').hidden=false;$('#cutCtl').hidden=false;recut();if(S.sample&&!S.add.edit)aiTag()}
+  catch(e){toast('この画像は読み込めませんでした')}
+}
+function recut(){
+  const A=S.add;if(!A||!A.src)return;const r=cutout(A.src,A.tol);A.cut=r&&r.canvas;
+  $('#cutNote').textContent=!r?'服を見つけられませんでした。値を下げるか「切り抜かずに使う」を。':r.frac<.04?'ほとんど消えています。値を下げてみて。':r.frac>.9?'背景が残っているかも。値を上げてみて。':'';
+  showPv();
+}
+function showPv(){const A=S.add,pv=$('#pv');pv.innerHTML='';const c=A.useCut&&A.cut?A.cut:A.src;if(c)pv.append(c)}
+async function aiTag(){
+  const A=S.add;if(!S.sample||!A)return;const btn=$('#aiTag');btn.disabled=true;$('#tagNote').innerHTML='<span class="spin"></span>写真を見ています…';
+  try{
+    let blob=null;const c=A.src;if(c&&S.canImg){const t=toCanvas(c,512);blob=await toBlob(t,'image/jpeg',.85)}
+    const cur=readForm();
+    const prompt=`あなたは服のアーカイブ図鑑の登録係です。${blob?'添付の写真の服':'次の情報の服'}について、図鑑用の情報をJSONだけで返してください。
+形式: {"name":"短い日本語の名前(例:ローゲージ クルーネックニット)","category":"${CATS.join('|')}のどれか","color":"${Object.keys(COLORS).join('|')}のどれか","material":"推定素材","silhouette":"形の特徴を短く","brand":"タグやロゴが読めればブランド名、なければ空文字","tags":["雰囲気タグ最大3つ"]}
+${blob?'':'現在の入力: '+JSON.stringify(cur)}`;
+    const r=await askJSON(prompt,{modelTier:'quick',...(blob?{images:[blob]}:{})});
+    if(S.add!==A)return;fillForm(r||{});$('#tagNote').textContent='入力しました。違うところは直してください。';
+  }catch(e){$('#tagNote').textContent=aiErr(e)}finally{if(btn.isConnected)btn.disabled=false}
+}
+async function saveItem(){
+  const A=S.add,btn=$('#iSave');const f=readForm();
+  if(!A.edit&&!A.src){toast('写真を選んでください');return}
+  btn.disabled=true;btn.innerHTML='<span class="spin"></span>保存中…';
+  try{
+    const base=A.edit?{...A.edit}:{};delete base.id;
+    const obj={...base,...f,updatedAt:Date.now()};
+    if(A.src){const c=A.useCut&&A.cut?A.cut:A.src;obj.img=await putBlob(await blobOf(c));obj.cut=!!(A.useCut&&A.cut)}
+    if(!A.edit){obj.no=S.items.reduce((m,i)=>Math.max(m,i.no||0),0)+1;obj.createdAt=Date.now()}
+    await saveDoc('items',A.edit?A.edit.id:rid(),obj);closeM();toast(A.edit?'保存しました':'No.'+pad(obj.no)+' を登録しました');
+  }catch(e){btn.disabled=false;btn.textContent='保存';toast(e&&e.code==='quota_exceeded'?'保存容量がいっぱいです':'保存できませんでした')}
+}
+function openItem(id){
+  const it=byId(id);if(!it)return;const w=wears()[id]||0;
+  const rows=[['カテゴリ',it.category],['色',it.color],['ブランド',it.brand],['シーズン・年代',it.era],['素材',it.material],['シルエット',it.silhouette],['購入',[it.buyDate,it.shop].filter(Boolean).join('　')],['価格',it.price!=null?yen(it.price):''],['着用回数',w+'回'],['着用単価',it.price&&w?yen(it.price/w):'—']].filter(r=>r[1]);
+  openM(`<div class="cut"><div class="plate" style="border-radius:12px">${it.img?`<img src="${esc(src(it.img))}" alt="">`:''}<span class="no num">No.${esc(pad(it.no))}</span></div>
+  <div><h2 style="margin:0 0 4px;font-size:26px;line-height:1.2">${esc(it.name)}</h2><div>${(it.tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>
+  <table style="margin-top:12px"><tbody>${rows.map(r=>`<tr><th style="width:7.5em;color:var(--mute);font-weight:500">${esc(r[0])}</th><td>${esc(r[1])}</td></tr>`).join('')}</tbody></table>
+  ${it.notes?`<p style="white-space:pre-wrap">${esc(it.notes)}</p>`:''}
+  <div class="row" style="margin-top:16px"><button class="btn" id="toO">この服でコーデを組む</button><button class="btn ghost" id="ed">編集</button><button class="btn danger" id="del">削除</button></div></div></div>`);
+  $('#toO').onclick=()=>{closeM();S.sel=new Set([id]);S.editO=null;go('outfits')};
+  $('#ed').onclick=()=>openAdd(it);
+  $('#del').onclick=async e=>{if(e.target.dataset.c){await delDoc('items',id);closeM();toast('削除しました')}else{e.target.dataset.c=1;e.target.textContent='本当に削除する'}};
+}
+
+/* ---------- zukan ---------- */
+$('#fColor').innerHTML='<option value="all">すべての色</option>'+Object.keys(COLORS).map(c=>`<option>${esc(c)}</option>`).join('');
+$('#q').oninput=()=>renderZukan();$('#fColor').onchange=()=>renderZukan();$('#fSort').onchange=()=>renderZukan();$('#addBtn').onclick=()=>openAdd();
+function chips(el,list,cur,on){el.innerHTML=list.map(([v,l])=>`<button class="chip" data-v="${esc(v)}" aria-pressed="${v===cur}">${esc(l)}</button>`).join('');el.onclick=e=>{const b=e.target.closest('.chip');if(b)on(b.dataset.v)}}
+function renderZukan(){
+  const n=c=>S.items.filter(i=>c==='all'||i.category===c).length;
+  chips($('#catChips'),[['all','すべて '+S.items.length],...CATS.map(c=>[c,c+' '+n(c)])],S.cat,v=>{S.cat=v;renderZukan()});
+  const g=$('#grid');
+  if(S.loading){g.innerHTML='<div class="empty"><span class="spin"></span>読み込み中…</div>';return}
+  if(!S.items.length){g.innerHTML='<div class="empty"><b>図鑑はまだ空です</b>最初の1着を登録しましょう。写真を撮ると背景を自動で切り抜いて、AIが名前や素材を入力します。<div style="margin-top:16px"><button class="btn acc" id="emptyAdd">＋ 服を登録</button></div></div>';return}
+  const q=$('#q').value.trim().toLowerCase(),col=$('#fColor').value,so=$('#fSort').value,w=wears();
+  let L=S.items.filter(i=>(S.cat==='all'||i.category===S.cat)&&(col==='all'||i.color===col)&&(!q||[i.name,i.brand,i.material,i.era,...(i.tags||[])].join(' ').toLowerCase().includes(q)));
+  L.sort(so==='new'?(a,b)=>(b.createdAt||0)-(a.createdAt||0):so==='price'?(a,b)=>(b.price||0)-(a.price||0):so==='wear'?(a,b)=>(w[b.id]||0)-(w[a.id]||0):(a,b)=>(a.no||0)-(b.no||0));
+  g.innerHTML=L.length?`<div class="grid">${L.map(i=>`<button class="card" data-id="${esc(i.id)}"><div class="plate">${i.img?`<img src="${esc(src(i.img))}" alt="" loading="lazy">`:''}<span class="no num">No.${esc(pad(i.no))}</span>${i.status==='sold'?'<span class="sold">手放した</span>':''}</div><div class="meta"><b>${esc(i.name)}</b><span>${esc([i.brand,i.category].filter(Boolean).join(' · '))}</span></div></button>`).join('')}</div>`:'<div class="empty">条件に合う服がありません</div>';
+  g.onclick=e=>{if(e.target.id==='emptyAdd'){openAdd();return}const c=e.target.closest('.card');if(c)openItem(c.dataset.id)};
+}
+
+/* ---------- outfits ---------- */
+const order=['アウター','トップス','ボトムス','シューズ','バッグ','小物'];
+function layHTML(ids,sm){
+  const its=ids.map(byId).filter(Boolean);const pick=cs=>its.filter(i=>cs.includes(i.category)).map(i=>`<img src="${esc(src(i.img))}" alt="${esc(i.name)}" title="${esc(i.name)}">`).join('');
+  if(!its.length)return`<div class="lay${sm?' sm':''}"><div class="hint">下から服を選ぶと、ここに平置きで並びます</div></div>`;
+  return`<div class="lay${sm?' sm':''}"><div class="t">${pick(['アウター','トップス'])}</div><div class="b">${pick(['ボトムス'])}</div><div class="f">${pick(['シューズ'])}</div><div class="s">${pick(['バッグ','小物'])}</div></div>`;
+}
+function renderOutfits(){
+  $('#lay').innerHTML=layHTML([...S.sel]);
+  $('#bTitle').textContent=S.editO?'コーデを編集':'コーデを組む';
+  chips($('#pCats'),[['all','すべて'],...CATS.map(c=>[c,c])],S.pcat,v=>{S.pcat=v;renderOutfits()});
+  const own=S.items.filter(i=>i.status!=='sold'&&(S.pcat==='all'||i.category===S.pcat)).sort((a,b)=>order.indexOf(a.category)-order.indexOf(b.category)||(a.no-b.no));
+  $('#picker').innerHTML=own.length?own.map(i=>`<button class="th" data-id="${esc(i.id)}" aria-pressed="${S.sel.has(i.id)}" title="${esc(i.name)}"><img src="${esc(src(i.img))}" alt="${esc(i.name)}"></button>`).join(''):'<p class="note">図鑑に服を登録すると、ここから選べます。</p>';
+  if(!$('#oDate').value)$('#oDate').value=today();
+  const L=[...S.outfits].sort((a,b)=>String(b.date).localeCompare(String(a.date))||(b.createdAt||0)-(a.createdAt||0));
+  $('#diary').innerHTML=S.loading?'<div class="empty"><span class="spin"></span>読み込み中…</div>':L.length?L.map(o=>{const dt=new Date(String(o.date)+'T00:00');const ok=!isNaN(dt);return`<div class="entry"><div class="d num">${ok?(dt.getMonth()+1)+'/'+dt.getDate():'—'}<small>${ok?dt.getFullYear()+' '+'日月火水木金土'[dt.getDay()]:''}</small>${o.photo?`<img src="${esc(src(o.photo))}" alt="着用写真" style="width:100%;border-radius:8px;margin-top:8px">`:''}</div><div>${layHTML(o.items||[],true)}${o.mood?`<span class="tag">${esc(o.mood)}</span>`:''}${o.source==='ai'?'<span class="tag">AI提案から</span>':''}${o.note?`<p>${esc(o.note)}</p>`:''}<div class="row" style="margin-top:6px"><button class="btn ghost" style="min-height:36px;padding:4px 12px;font-size:14px" data-e="${esc(o.id)}">編集</button><button class="btn danger" style="min-height:36px;padding:4px 12px;font-size:14px" data-x="${esc(o.id)}">削除</button></div></div></div>`}).join(''):'<div class="empty"><b>日記はまだありません</b>左で服を選んで、その日のコーデを残しましょう。</div>';
+}
+$('#picker').onclick=e=>{const b=e.target.closest('.th');if(!b)return;const id=b.dataset.id;S.sel.has(id)?S.sel.delete(id):S.sel.add(id);renderOutfits()};
+$('#oPhoto').onchange=e=>{S.oPhoto=e.target.files[0]||null};
+function clearB(){S.sel=new Set();S.editO=null;S.oPhoto=null;$('#oPhoto').value='';$('#oNote').value='';$('#oMood').value='';$('#oDate').value=today();S.src=null;renderOutfits()}
+$('#oClear').onclick=clearB;
+$('#oSave').onclick=async()=>{
+  if(!S.sel.size){toast('服を1着以上選んでください');return}
+  const b=$('#oSave');b.disabled=true;
+  try{
+    const prev=S.editO?S.outfits.find(o=>o.id===S.editO):null;let photo=prev?prev.photo||null:null;
+    if(S.oPhoto){const bmp=await createImageBitmap(S.oPhoto);photo=await putBlob(await toBlob(toCanvas(bmp,1000),'image/jpeg',.85))}
+    await saveDoc('outfits',S.editO||rid(),{date:$('#oDate').value||today(),items:[...S.sel],note:$('#oNote').value.trim(),mood:$('#oMood').value.trim(),photo,source:S.src||(prev&&prev.source)||'manual',createdAt:prev?prev.createdAt:Date.now(),updatedAt:Date.now()});
+    toast('日記に保存しました');clearB();
+  }catch(e){toast('保存できませんでした')}finally{b.disabled=false}
+};
+$('#diary').onclick=async e=>{
+  const ed=e.target.dataset.e,x=e.target.dataset.x;
+  if(ed){const o=S.outfits.find(v=>v.id===ed);if(!o)return;S.editO=ed;S.sel=new Set(o.items||[]);$('#oDate').value=o.date||today();$('#oNote').value=o.note||'';$('#oMood').value=o.mood||'';S.oPhoto=null;$('#oPhoto').value='';renderOutfits();scrollTo({top:0,behavior:'smooth'})}
+  if(x){if(e.target.dataset.c){await delDoc('outfits',x);toast('削除しました')}else{e.target.dataset.c=1;e.target.textContent='本当に削除'}}
+};
+
+/* ---------- AI styling ---------- */
+function renderMoods(){chips($('#moods'),MOODS.map(m=>[m,m]),null,v=>{S.moods.has(v)?S.moods.delete(v):S.moods.add(v);renderMoods()});$('#moods').querySelectorAll('.chip').forEach(b=>b.setAttribute('aria-pressed',S.moods.has(b.dataset.v)))}
+renderMoods();
+$('#memo').addEventListener('change',async()=>{const v=$('#memo').value;if(v===S.memo)return;S.memo=v;if(S.db){try{await S.db.doc('settings/profile').set({memo:v,updatedAt:Date.now()});$('#memoNote').textContent='保存しました'}catch(e){$('#memoNote').textContent='保存できませんでした'}}});
+let aiCtl=null;
+$('#aiStop').onclick=()=>{if(aiCtl)aiCtl.abort()};
+$('#aiGo').onclick=async()=>{
+  const own=S.items.filter(i=>i.status!=='sold');
+  if(!S.sample){$('#aiNote').textContent='この表示ではAIを使えません。';return}
+  if(own.length<3){$('#aiNote').textContent='提案には3着以上の登録が必要です（今 '+own.length+' 着）。';return}
+  const w=wears();
+  const closet=own.map(i=>[i.id,i.name,i.category,i.color,i.material,i.silhouette,i.brand,i.era,(i.tags||[]).join('/'),'着用'+(w[i.id]||0)].map(v=>String(v??'').replace(/\|/g,' ')).join('|')).join('\n');
+  const prompt=`あなたは服好きの友人で、アーカイブとモードに詳しいスタイリストです。持っている服だけでコーデを組み、さらに新しい系統を提案してください。
+# 本人のスタイルメモ
+${$('#memo').value||MEMO_DEFAULT}
+# 今日の希望
+雰囲気: ${[...S.moods].join('、')||'おまかせ'}
+シーン: ${$('#aiSit').value.trim()||'特になし'}
+# クローゼット（id|名前|カテゴリ|色|素材|シルエット|ブランド|年代|タグ|着用回数）
+${closet}
+# 出力
+JSONだけを返してください。itemIdsは必ず上のidから選ぶこと。着用回数が少ない服も積極的に使うこと。説明は短く、くだけた日本語で。
+{"read":"今のクローゼットの系統を2文で","outfits":[{"title":"コーデ名","itemIds":["id"],"why":"狙い","point":"着こなしのコツ（丈・はみ出し・差し色など）"}],"next":[{"direction":"次に試す系統名","why":"なぜ合うか","add":[{"item":"買い足す服","why":"手持ちのどれと合わせるか"}]}]}
+outfitsは3つ、nextは2つ。`;
+  aiCtl=new AbortController();$('#aiGo').disabled=true;$('#aiStop').hidden=false;$('#aiNote').innerHTML='<span class="spin"></span>クローゼットを見て考えています…';
+  try{
+    const r=await askJSON(prompt,{signal:aiCtl.signal,modelTier:'default'});
+    const ids=new Set(own.map(i=>i.id));
+    S.ai={read:String(r.read||''),outfits:(Array.isArray(r.outfits)?r.outfits:[]).map(o=>({title:String(o.title||''),why:String(o.why||''),point:String(o.point||''),itemIds:(Array.isArray(o.itemIds)?o.itemIds:[]).map(String).filter(x=>ids.has(x))})).filter(o=>o.itemIds.length),next:(Array.isArray(r.next)?r.next:[]).map(n=>({direction:String(n.direction||''),why:String(n.why||''),add:(Array.isArray(n.add)?n.add:[]).map(a=>({item:String(a.item||''),why:String(a.why||'')}))}))};
+    $('#aiNote').textContent='';renderAI();
+  }catch(e){$('#aiNote').textContent=aiCtl.signal.aborted?'中止しました':aiErr(e)}
+  finally{$('#aiGo').disabled=false;$('#aiStop').hidden=true;aiCtl=null}
+};
+function renderAI(){
+  if(S.memo!==null&&document.activeElement!==$('#memo'))$('#memo').value=S.memo;
+  const A=S.ai,o=$('#aiOut');if(!A){o.innerHTML='';return}
+  o.innerHTML=`${A.read?`<p class="read">${esc(A.read)}</p>`:''}
+  ${A.outfits.map((p,k)=>`<div class="prop">${layHTML(p.itemIds)}<div><h3>${esc(p.title)}</h3><p>${esc(p.why)}</p>${p.point?`<p class="note">コツ：${esc(p.point)}</p>`:''}<p class="note">${p.itemIds.map(byId).filter(Boolean).map(i=>'No.'+pad(i.no)+' '+i.name).map(esc).join(' ／ ')}</p><button class="btn" data-k="${k}">このコーデを日記へ</button></div></div>`).join('')}
+  ${A.next.length?`<div class="panel"><h2>次に試す系統</h2>${A.next.map(n=>`<div style="margin-bottom:14px"><h3 style="margin:0 0 4px;font-size:18px">${esc(n.direction)}</h3><p style="margin:0 0 6px">${esc(n.why)}</p>${n.add.map(a=>`<div class="note">＋ <b style="color:var(--ink)">${esc(a.item)}</b> — ${esc(a.why)}</div>`).join('')}</div>`).join('')}</div>`:''}`;
+  o.onclick=e=>{const k=e.target.dataset.k;if(k==null)return;const p=A.outfits[+k];S.sel=new Set(p.itemIds);S.editO=null;S.src='ai';$('#oNote').value=p.title+'\n'+p.why;$('#oMood').value=[...S.moods].join('・');go('outfits');toast('日付やメモを確認して保存してください')};
+}
+
+/* ---------- money ---------- */
+$('#mYear').onchange=()=>renderMoney();
+function bars(el,rows,hiTop){const mx=Math.max(1,...rows.map(r=>r[1]));el.innerHTML=rows.length?rows.map((r,k)=>`<div class="r${hiTop&&k===0?' hi':''}"><span>${esc(r[0])}</span><div class="tr"><div class="fl" style="width:${(r[1]/mx*100).toFixed(1)}%"></div></div><span class="v">${yen(r[1])}</span></div>`).join(''):'<p class="note">データがありません</p>'}
+function renderMoney(){
+  const priced=S.items.filter(i=>i.price!=null);
+  const years=[...new Set(priced.map(i=>String(i.buyDate||'').slice(0,4)).filter(y=>/^\d{4}$/.test(y)))].sort().reverse();
+  const ys=$('#mYear'),cur=ys.value;ys.innerHTML='<option value="all">全期間</option>'+years.map(y=>`<option value="${y}">${y}年</option>`).join('');ys.value=[...ys.options].some(o=>o.value===cur)?cur:(years[0]||'all');
+  const Y=ys.value,L=priced.filter(i=>Y==='all'||String(i.buyDate||'').startsWith(Y));
+  const tot=L.reduce((s,i)=>s+i.price,0),top=L.reduce((m,i)=>i.price>(m?m.price:-1)?i:m,null);
+  $('#kpis').innerHTML=[['合計',yen(tot)],['点数',L.length+'点'],['平均単価',yen(L.length?tot/L.length:0)],['いちばん高い',top?yen(top.price):'—',top?top.name:'']].map(k=>`<div class="kpi"><span>${esc(k[0])}</span><b>${esc(k[1])}</b>${k[2]?`<span>${esc(k[2])}</span>`:''}</div>`).join('');
+  let ms;if(Y==='all'){const now=new Date();ms=[...Array(12)].map((_,k)=>{const d=new Date(now.getFullYear(),now.getMonth()-11+k,1);return[d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'),(d.getMonth()+1)+'月']})}else ms=[...Array(12)].map((_,k)=>[Y+'-'+String(k+1).padStart(2,'0'),(k+1)+'月']);
+  const mv=ms.map(([key])=>priced.filter(i=>String(i.buyDate||'').startsWith(key)).reduce((s,i)=>s+i.price,0)),mm=Math.max(1,...mv);
+  $('#months').innerHTML=ms.map(([,l],k)=>`<div class="m" title="${esc(l)} ${yen(mv[k])}">${mv[k]?`<em>${mv[k]>=10000?Math.round(mv[k]/1000)+'k':yen(mv[k])}</em>`:''}<i style="height:${(mv[k]/mm*85).toFixed(1)}%"></i>${esc(l)}</div>`).join('');
+  const sum=key=>{const m={};for(const i of L){const k=i[key]||'（未入力）';m[k]=(m[k]||0)+i.price}return Object.entries(m).sort((a,b)=>b[1]-a[1])};
+  bars($('#byCat'),sum('category'),true);bars($('#byBrand'),sum('brand').slice(0,8),true);
+  const w=wears(),cp=priced.filter(i=>i.status!=='sold').map(i=>({i,n:w[i.id]||0})).sort((a,b)=>(a.n?a.i.price/a.n:1e15)-(b.n?b.i.price/b.n:1e15));
+  $('#cpw').innerHTML=cp.length?'<thead><tr><th>服</th><th class="n">価格</th><th class="n">着用</th><th class="n">着用単価</th></tr></thead><tbody>'+cp.slice(0,14).map(({i,n})=>`<tr><td>No.${esc(pad(i.no))} ${esc(i.name)}</td><td class="n">${yen(i.price)}</td><td class="n">${n}回</td><td class="n">${n?yen(i.price/n):'<span class="note">未着用</span>'}</td></tr>`).join('')+'</tbody>':'<tbody><tr><td class="note">価格を入れた服がありません</td></tr></tbody>';
+}
+
+/* ---------- routing & render ---------- */
+const VIEWS=['zukan','outfits','ai','money'];
+function go(v){if(location.hash!=='#'+v)location.hash=v;else show()}
+function show(){const v=VIEWS.includes(location.hash.slice(1))?location.hash.slice(1):'zukan';S.view=v;for(const x of VIEWS)$('#v-'+x).hidden=x!==v;document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-current',b.dataset.v===v));render()}
+document.querySelector('nav').onclick=e=>{const b=e.target.closest('button');if(b)go(b.dataset.v)};
+addEventListener('hashchange',show);
+function render(){
+  const own=S.items.filter(i=>i.status!=='sold').length;
+  $('#count').textContent=S.loading?'読み込み中…':`所持 ${own}着 ・ 日記 ${S.outfits.length}件${S.db?'':' ・ プレビュー（保存されません）'}`;
+  ({zukan:renderZukan,outfits:renderOutfits,ai:renderAI,money:renderMoney})[S.view]();
+}
+show();
+
+/* ---------- connect ---------- */
+(async()=>{
+  const C=window.claude;let timer=setTimeout(()=>{if(S.loading){S.loading=false;$('#count').textContent='データに接続できません（プレビューとして動作中）';render()}},10000);
+  if(!C||!C.use){clearTimeout(timer);S.loading=false;S.memo=MEMO_DEFAULT;render();return}
+  const [db,assets,sample]=await Promise.all([C.use('db'),C.use('assets'),C.use('sample')]);
+  S.assets=assets;S.sample=sample;
+  if(sample&&sample.limits){try{const l=await sample.limits();S.canImg=!!(l&&l.images)}catch(e){}}
+  if(!db){clearTimeout(timer);S.loading=false;S.memo=MEMO_DEFAULT;render();return}
+  S.db=db;let got=0;const done=()=>{if(++got>=2){clearTimeout(timer);S.loading=false}render()};
+  const fail=e=>{clearTimeout(timer);S.loading=false;$('#count').textContent='データを読み込めませんでした';};
+  let a=false,b=false;
+  db.collection('items').onSnapshot(s=>{S.items=s.docs.map(d=>({...d.data(),id:d.id}));if(!a&&!s.metadata.fromCache){a=true;done()}else render()},fail);
+  db.collection('outfits').onSnapshot(s=>{S.outfits=s.docs.map(d=>({...d.data(),id:d.id}));if(!b&&!s.metadata.fromCache){b=true;done()}else render()},fail);
+  try{const p=await db.doc('settings/profile').get();S.memo=p.exists&&p.data().memo!=null?String(p.data().memo):MEMO_DEFAULT}catch(e){S.memo=MEMO_DEFAULT}
+  render();
+})();
+}
+</script>
+</body>
+</html>
